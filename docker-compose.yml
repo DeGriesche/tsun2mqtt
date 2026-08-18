@@ -1,0 +1,24 @@
+services:
+  tsun2mqtt:
+    build: .
+    image: tsun2mqtt:latest
+    container_name: tsun2mqtt
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Europe/Berlin
+    # Uncomment when the broker below is used instead of an existing one.
+    # depends_on:
+    #   - mosquitto
+
+  # Local broker for trying things out. Remove if a broker already exists.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    command: >
+      sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf
+      && exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"

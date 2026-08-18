@@ -1,0 +1,173 @@
+package com.deutscheleasing.swfactory.tsun;
+
+import com.deutscheleasing.swfactory.tsun.mqtt.HomeAssistantDiscovery;
+import com.deutscheleasing.swfactory.tsun.mqtt.MqttPublisher;
+import com.deutscheleasing.swfactory.tsun.talent.Model;
+import com.deutscheleasing.swfactory.tsun.talent.TalentClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalDouble;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** Drives a single poll cycle against a stubbed API and inspects what lands on MQTT. */
+class BridgeTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** Captures publishes instead of talking to a broker. */
+    private static final class RecordingPublisher extends MqttPublisher {
+
+        private final Map<String, String> messages = new LinkedHashMap<>();
+
+        RecordingPublisher(Config config) {
+            super(config);
+        }
+
+        @Override
+        public void publish(String topic, String payload) {
+            messages.put(topic, payload);
+        }
+
+        @Override
+        public void publish(String topic, String payload, boolean retain) {
+            messages.put(topic, payload);
+        }
+    }
+
+    private static final class StubClient extends TalentClient {
+
+        StubClient(Config config) {
+            super(config, null, MAPPER);
+        }
+
+        @Override
+        public List<Model.Station> stations() {
+            return List.of(new Model.Station("guid-1", "Balcony", Optional.of("1"), MAPPER.createObjectNode()));
+        }
+
+        @Override
+        public Model.StationPower stationPower(String stationGuid) {
+            return new Model.StationPower(
+                    OptionalDouble.of(612.5), OptionalDouble.of(3.42), OptionalDouble.of(88),
+                    OptionalDouble.empty(), OptionalDouble.empty(), MAPPER.createObjectNode());
+        }
+
+        @Override
+        public List<Model.Device> collectors(String stationGuid) {
+            return List.of(new Model.Device("col-1", Optional.of("C1"), Optional.of("Stick"),
+                    Optional.of(stationGuid), OptionalDouble.of(78), MAPPER.createObjectNode()));
+        }
+
+        @Override
+        public List<Model.Device> inverters(String stationGuid) {
+            return List.of(new Model.Device("inv-1", Optional.of("Y1234567"), Optional.empty(),
+                    Optional.of(stationGuid), OptionalDouble.empty(), MAPPER.createObjectNode()));
+        }
+
+        @Override
+        public Model.InverterInfo inverterInfo(String deviceGuid) {
+            return new Model.InverterInfo(
+                    OptionalDouble.of(41.3),
+                    List.of(new Model.PvString(1, OptionalDouble.of(34.1), OptionalDouble.of(2.2),
+                                    OptionalDouble.of(75)),
+                            new Model.PvString(2, OptionalDouble.of(33.8), OptionalDouble.of(2.1),
+                                    OptionalDouble.of(71))),
+                    List.of(new Model.Phase(1, OptionalDouble.of(229.7), OptionalDouble.of(0.63),
+                            OptionalDouble.of(50.01))),
+                    MAPPER.createObjectNode());
+        }
+    }
+
+    private static Config config(Map<String, String> overrides) {
+        var env = new HashMap<String, String>();
+        env.put("TALENT_USERNAME", "user");
+        env.put("TALENT_PASSWORD", "secret");
+        env.putAll(overrides);
+        return Config.fromEnv(env);
+    }
+
+    private static RecordingPublisher poll(Config config) {
+        var publisher = new RecordingPublisher(config);
+        var discovery = new HomeAssistantDiscovery(config, MAPPER);
+        try (publisher) {
+            new Bridge(config, new StubClient(config), publisher, discovery, MAPPER).pollOnce();
+        }
+        return publisher;
+    }
+
+    private static JsonNode parse(String payload) {
+        try {
+            return MAPPER.readTree(payload);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    void publishesStationCollectorAndInverterState() {
+        var messages = poll(config(Map.of())).messages;
+
+        var station = parse(messages.get("tsun/station/balcony/state"));
+        assertEquals("Balcony", station.get("station_name").asText());
+        assertEquals(612.5, station.get("total_active_power").asDouble());
+        assertEquals(3.42, station.get("day_energy").asDouble());
+        assertFalse(station.has("total_energy"), "absent API values must not be published as zero");
+
+        var collector = parse(messages.get("tsun/collector/c1/state"));
+        assertEquals(78, collector.get("signal_strength").asInt());
+
+        var inverter = parse(messages.get("tsun/inverter/y1234567/state"));
+        assertEquals(41.3, inverter.get("temperature").asDouble());
+        assertEquals(75.0, inverter.get("pv1_power").asDouble());
+        assertEquals(71.0, inverter.get("pv2_power").asDouble());
+        assertEquals(146.0, inverter.get("pv_total_power").asDouble());
+        assertEquals(50.01, inverter.get("grid1_frequency").asDouble());
+        assertTrue(inverter.has("last_update"));
+    }
+
+    @Test
+    void publishesHomeAssistantDiscoveryOnce() {
+        var messages = poll(config(Map.of())).messages;
+
+        var topic = "homeassistant/sensor/tsun_inverter_y1234567/pv1_power/config";
+        var discovery = parse(messages.get(topic));
+        assertEquals("tsun_inverter_y1234567_pv1_power", discovery.get("unique_id").asText());
+        assertEquals("tsun/inverter/y1234567/state", discovery.get("state_topic").asText());
+        assertEquals("W", discovery.get("unit_of_measurement").asText());
+        assertEquals("power", discovery.get("device_class").asText());
+        assertEquals("tsun/status", discovery.get("availability_topic").asText());
+        assertEquals("tsun_station_guid-1", discovery.get("device").get("via_device").asText());
+
+        var energy = parse(messages.get("homeassistant/sensor/tsun_station_guid-1/day_energy/config"));
+        assertEquals("kWh", energy.get("unit_of_measurement").asText());
+        assertEquals("total_increasing", energy.get("state_class").asText());
+    }
+
+    @Test
+    void discoveryCanBeDisabledAndTopicPrefixChanged() {
+        var messages = poll(config(Map.of(
+                "HA_DISCOVERY_ENABLED", "false",
+                "MQTT_BASE_TOPIC", "solar/tsun"))).messages;
+
+        assertTrue(messages.keySet().stream().noneMatch(t -> t.startsWith("homeassistant/")));
+        assertTrue(messages.containsKey("solar/tsun/inverter/y1234567/state"));
+    }
+
+    @Test
+    void publishesRawPayloadsOnDemand() {
+        var messages = poll(config(Map.of("PUBLISH_RAW", "true"))).messages;
+
+        assertTrue(messages.containsKey("tsun/station/balcony/raw"));
+        assertTrue(messages.containsKey("tsun/inverter/y1234567/raw"));
+    }
+}
