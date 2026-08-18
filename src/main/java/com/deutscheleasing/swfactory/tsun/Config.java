@@ -29,7 +29,7 @@ public record Config(
         String healthFile,
         String logLevel) {
 
-    public static final String DEFAULT_BASE_URL = "https://pro.talent-monitoring.com/prod-api";
+    public static final String DEFAULT_BASE_URL = "https://pro.talent-monitoring.com";
 
     public static Config fromEnv() {
         return fromEnv(System.getenv());

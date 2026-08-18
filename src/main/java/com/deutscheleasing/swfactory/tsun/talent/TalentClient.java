@@ -3,11 +3,11 @@ package com.deutscheleasing.swfactory.tsun.talent;
 import com.deutscheleasing.swfactory.tsun.Config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,6 +30,7 @@ public class TalentClient {
 
     private final Config config;
     private final HttpClient http;
+    private final OkHttpClient client = new OkHttpClient();
     private final ObjectMapper mapper;
 
     private volatile String token;
@@ -50,30 +51,39 @@ public class TalentClient {
 
     /** Authenticates and caches the bearer token. */
     public void login() {
-        var payload = mapper.createObjectNode()
-                .put("username", config.talentUsername())
-                .put("password", config.talentPassword());
+        var payload = String.format("grant_type=password&username=%s&password=%S&client_id=sdl_client&identity_type=2",
+                 config.talentUsername(),config.talentPassword());
 
-        var request = HttpRequest.newBuilder(URI.create(config.talentBaseUrl() + "/login"))
-                .timeout(config.httpTimeout())
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(payload.toString(), StandardCharsets.UTF_8))
+        RequestBody formBody = new FormBody.Builder()
+                .add("grant_type","password")
+                .add("username", config.talentUsername())
+                .add("password", config.talentPassword())
+                .add("client_id","sdl_client")
+                .add("identity_type","2")
+                .build();
+        Request request = new Request.Builder()
+                .url(config.talentBaseUrl() + "/oauth2-s/oauth/token")
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .post(formBody)
                 .build();
 
         var body = send(request);
-        var newToken = Json.text(body, "token")
+        token = Json.text(body, "access_token")
                 .or(() -> Json.text(Json.at(body, "data"), "token", "access_token"))
                 .orElseThrow(() -> new TalentApiException(
                         "Login failed: no token in response (" + describe(body) + ")", true, null));
-        token = newToken;
         LOG.info("Logged in to {} as {}", config.talentBaseUrl(), config.talentUsername());
     }
 
     public List<Model.Station> stations() {
-        return Json.rows(get("/system/station/list?pageNum=1&pageSize=" + PAGE_SIZE)).stream()
+        return Json.rows(post("/station-s/station/query/list","{\"returnTag\": true}\n")).stream()
                 .map(Model.Station::of)
                 .toList();
+    }
+
+    public Model.StationDetails station(String stationGuid) {
+        var body = get("/station-s/station/statistic/current/flow/" + stationGuid);
+        return Model.StationDetails.of(Json.at(body, "stationCurrentDto"));
     }
 
     public Model.StationPower stationPower(String stationGuid) {
@@ -116,24 +126,84 @@ public class TalentClient {
             login();
         }
         try {
-            return send(authorized(pathAndQuery));
+            return send(authorizedGet(pathAndQuery));
         } catch (TalentApiException e) {
             if (!e.isUnauthorized()) {
                 throw e;
             }
             LOG.debug("Token rejected for {}, re-authenticating", pathAndQuery);
             login();
-            return send(authorized(pathAndQuery));
+            return send(authorizedGet(pathAndQuery));
         }
     }
 
-    private HttpRequest authorized(String pathAndQuery) {
-        return HttpRequest.newBuilder(URI.create(config.talentBaseUrl() + pathAndQuery))
-                .timeout(config.httpTimeout())
+    /** POST a path relative to the API base, logging in or re-logging in as needed. */
+    public JsonNode post(String pathAndQuery, String body) {
+        if (token == null) {
+            login();
+        }
+        try {
+            return send(authorizedPost(pathAndQuery,body));
+        } catch (TalentApiException e) {
+            if (!e.isUnauthorized()) {
+                throw e;
+            }
+            LOG.debug("Token rejected for {}, re-authenticating", pathAndQuery);
+            login();
+            return send(authorizedPost(pathAndQuery,body));
+        }
+    }
+
+    private Request authorizedGet(String pathAndQuery) {
+        return new Request.Builder()
+                .url(config.talentBaseUrl() + pathAndQuery)
                 .header("Authorization", "Bearer " + token)
                 .header("Accept", "application/json")
-                .GET()
+                .get()
                 .build();
+    }
+
+    private Request authorizedPost(String pathAndQuery, String body) {
+        return new Request.Builder()
+                .url(config.talentBaseUrl() + pathAndQuery)
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(body.getBytes(StandardCharsets.UTF_8)))
+                .build();
+    }
+
+    private JsonNode send(Request request) {
+        try (Response response = client.newCall(request).execute()){
+            var status = response.code();
+            if (status == 401 || status == 403) {
+                throw new TalentApiException("API returned HTTP " + status + " for " + request.url(), true, null);
+            }
+            if (status / 100 != 2) {
+                throw new TalentApiException("API returned HTTP " + status + " for " + request.url()
+                        + ": " + abbreviate(response.body().string()));
+            }
+
+            JsonNode body;
+            try {
+                body = mapper.readTree(response.body().string());
+            } catch (IOException e) {
+                throw new TalentApiException("Malformed JSON from " + request.url(), false, e);
+            }
+
+            // The portal runs a RuoYi backend: business errors come back as HTTP 200 with a code field.
+            var code = Json.number(body, "code");
+            if (code.isPresent() && code.getAsDouble() != 200) {
+                var value = (int) code.getAsDouble();
+                var unauthorized = value == 401 || value == 403;
+                throw new TalentApiException("API error " + value + " for " + request.url()
+                        + ": " + describe(body), unauthorized, null);
+            }
+            return body;
+
+        } catch (IOException e) {
+            throw new TalentApiException(request.method() + " " + request.url() + " failed", false, e);
+        }
     }
 
     private JsonNode send(HttpRequest request) {

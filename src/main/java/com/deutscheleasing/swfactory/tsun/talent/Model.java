@@ -16,12 +16,13 @@ public final class Model {
     public record Station(String guid, String name, Optional<String> status, JsonNode raw) {
 
         static Station of(JsonNode row) {
+            JsonNode station = row.get("station");
             return new Station(
-                    Json.text(row, "powerStationGuid", "stationGuid", "guid").orElseThrow(
-                            () -> new TalentApiException("Station row without powerStationGuid: " + row)),
-                    Json.text(row, "stationName", "name").orElse("station"),
-                    Json.text(row, "status", "stationStatus"),
-                    row);
+                    Json.text(station, "id").orElseThrow(
+                            () -> new TalentApiException("Station row without powerStationGuid: " + station)),
+                    Json.text(station,  "name").orElse("station"),
+                    Json.text(station, "batteryStatus"),
+                    station);
         }
     }
 
@@ -48,6 +49,22 @@ public final class Model {
         /** Stable, human-recognisable id used in topics: serial number if known, else the GUID. */
         public String id() {
             return serialNumber().orElse(guid());
+        }
+    }
+
+    /** Aggregated production figures of a station. */
+    public record StationDetails(
+            OptionalDouble soc,
+            OptionalDouble currentGenerationPower,
+            OptionalDouble totalGenerationPower,
+            JsonNode raw) {
+
+        static StationDetails of(JsonNode data) {
+            return new StationDetails(
+                    Json.number(data, "batterySoc"),
+                    Json.number(data, "generationPower"),
+                    Json.number(data, "generationValue"),
+                    data);
         }
     }
 
