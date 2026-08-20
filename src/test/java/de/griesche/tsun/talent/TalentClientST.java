@@ -1,17 +1,16 @@
-package com.deutscheleasing.swfactory.tsun.talent;
+package de.griesche.tsun.talent;
 
-import com.deutscheleasing.swfactory.tsun.Config;
+import de.griesche.tsun.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class TalentClientTest {
+public class TalentClientST {
     static TalentClient talentClient;
     @BeforeAll
     public static void init() {
@@ -33,6 +32,6 @@ public class TalentClientTest {
     @Test
     public void station() {
         Model.StationDetails station=  talentClient.station("168510");
-        assertNotNull(station.soc());
+        assertNotNull(station.batterySoc());
     }
 }

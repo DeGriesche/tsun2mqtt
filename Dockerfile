@@ -9,7 +9,7 @@ COPY pom.xml ./
 RUN mvn -B -ntp dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -ntp clean package
+RUN mvn -B -ntp clean package -DskipTests
 
 # ---------- runtime ----------
 FROM eclipse-temurin:25-jre-alpine
@@ -28,8 +28,8 @@ COPY --from=build /build/target/tsun2mqtt.jar /app/tsun2mqtt.jar
 USER app
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC" \
-    TALENT_BASE_URL="https://pro.talent-monitoring.com/prod-api" \
-    POLL_INTERVAL_SECONDS="300" \
+    TALENT_BASE_URL="https://pro.talent-monitoring.com" \
+    POLL_INTERVAL_SECONDS="30" \
     MQTT_URL="tcp://localhost:1883" \
     MQTT_BASE_TOPIC="tsun" \
     HA_DISCOVERY_ENABLED="true" \

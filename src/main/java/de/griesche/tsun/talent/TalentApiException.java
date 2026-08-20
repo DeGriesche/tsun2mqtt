@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun.talent;
+package de.griesche.tsun.talent;
 
 /** Any failure while talking to the TALENT Monitoring cloud API. */
 public class TalentApiException extends RuntimeException {

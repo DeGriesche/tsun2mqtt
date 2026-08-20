@@ -1,9 +1,9 @@
-package com.deutscheleasing.swfactory.tsun;
+package de.griesche.tsun;
 
-import com.deutscheleasing.swfactory.tsun.mqtt.HomeAssistantDiscovery;
-import com.deutscheleasing.swfactory.tsun.mqtt.MqttPublisher;
-import com.deutscheleasing.swfactory.tsun.talent.Model;
-import com.deutscheleasing.swfactory.tsun.talent.TalentClient;
+import de.griesche.tsun.mqtt.HomeAssistantDiscovery;
+import de.griesche.tsun.mqtt.MqttPublisher;
+import de.griesche.tsun.talent.Model;
+import de.griesche.tsun.talent.TalentClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalDouble;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,37 +54,6 @@ class BridgeTest {
             return List.of(new Model.Station("guid-1", "Balcony", Optional.of("1"), MAPPER.createObjectNode()));
         }
 
-        @Override
-        public Model.StationPower stationPower(String stationGuid) {
-            return new Model.StationPower(
-                    OptionalDouble.of(612.5), OptionalDouble.of(3.42), OptionalDouble.of(88),
-                    OptionalDouble.empty(), OptionalDouble.empty(), MAPPER.createObjectNode());
-        }
-
-        @Override
-        public List<Model.Device> collectors(String stationGuid) {
-            return List.of(new Model.Device("col-1", Optional.of("C1"), Optional.of("Stick"),
-                    Optional.of(stationGuid), OptionalDouble.of(78), MAPPER.createObjectNode()));
-        }
-
-        @Override
-        public List<Model.Device> inverters(String stationGuid) {
-            return List.of(new Model.Device("inv-1", Optional.of("Y1234567"), Optional.empty(),
-                    Optional.of(stationGuid), OptionalDouble.empty(), MAPPER.createObjectNode()));
-        }
-
-        @Override
-        public Model.InverterInfo inverterInfo(String deviceGuid) {
-            return new Model.InverterInfo(
-                    OptionalDouble.of(41.3),
-                    List.of(new Model.PvString(1, OptionalDouble.of(34.1), OptionalDouble.of(2.2),
-                                    OptionalDouble.of(75)),
-                            new Model.PvString(2, OptionalDouble.of(33.8), OptionalDouble.of(2.1),
-                                    OptionalDouble.of(71))),
-                    List.of(new Model.Phase(1, OptionalDouble.of(229.7), OptionalDouble.of(0.63),
-                            OptionalDouble.of(50.01))),
-                    MAPPER.createObjectNode());
-        }
     }
 
     private static Config config(Map<String, String> overrides) {

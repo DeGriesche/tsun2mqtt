@@ -1,6 +1,6 @@
-package com.deutscheleasing.swfactory.tsun.mqtt;
+package de.griesche.tsun.mqtt;
 
-import com.deutscheleasing.swfactory.tsun.Config;
+import de.griesche.tsun.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,12 +40,12 @@ public class HomeAssistantDiscovery {
             boolean diagnostic) {
 
         public static Sensor measurement(String key, String name, String unit, String deviceClass) {
-            return new Sensor(key, name, Optional.of(unit), Optional.of(deviceClass),
+            return new Sensor(key, name, Optional.ofNullable(unit), Optional.of(deviceClass),
                     Optional.of("measurement"), false);
         }
 
-        public static Sensor totalIncreasing(String key, String name, String unit) {
-            return new Sensor(key, name, Optional.of(unit), Optional.of("energy"),
+        public static Sensor totalIncreasing(String key, String name, String unit, String deviceClass) {
+            return new Sensor(key, name, Optional.of(unit), Optional.of(deviceClass),
                     Optional.of("total_increasing"), false);
         }
 

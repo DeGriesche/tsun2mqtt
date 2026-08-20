@@ -1,6 +1,6 @@
-package com.deutscheleasing.swfactory.tsun.talent;
+package de.griesche.tsun.talent;
 
-import com.deutscheleasing.swfactory.tsun.Config;
+import de.griesche.tsun.Config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
@@ -84,40 +84,6 @@ public class TalentClient {
     public Model.StationDetails station(String stationGuid) {
         var body = get("/station-s/station/statistic/current/flow/" + stationGuid);
         return Model.StationDetails.of(Json.at(body, "stationCurrentDto"));
-    }
-
-    public Model.StationPower stationPower(String stationGuid) {
-        var body = get("/system/station/getPowerStationByGuid"
-                + "?powerStationGuid=" + encode(stationGuid)
-                + "&timezone=" + encode(config.talentTimezone()));
-        return Model.StationPower.of(Json.at(body, "data"));
-    }
-
-    /** Inverters of a station. The list endpoint is account wide, so rows are filtered by station. */
-    public List<Model.Device> inverters(String stationGuid) {
-        return devices("/tools/device/selectDeviceInverter", stationGuid);
-    }
-
-    /** Collectors (WiFi sticks, data loggers) of a station. */
-    public List<Model.Device> collectors(String stationGuid) {
-        return devices("/tools/device/selectDeviceCollector", stationGuid);
-    }
-
-    public Model.InverterInfo inverterInfo(String deviceGuid) {
-        var body = get("/tools/device/selectDeviceInverterInfo?deviceGuid=" + encode(deviceGuid));
-        return Model.InverterInfo.of(Json.at(body, "data"));
-    }
-
-    private List<Model.Device> devices(String path, String stationGuid) {
-        var body = get(path
-                + "?powerStationGuid=" + encode(stationGuid)
-                + "&pageNum=1&pageSize=" + PAGE_SIZE);
-        return Json.rows(body).stream()
-                .map(Model.Device::of)
-                // The filter parameter is ignored by some portal versions, so keep only the rows of
-                // this station whenever a row carries a station reference at all.
-                .filter(d -> d.stationGuid().map(stationGuid::equals).orElse(true))
-                .toList();
     }
 
     /** GET a path relative to the API base, logging in or re-logging in as needed. */

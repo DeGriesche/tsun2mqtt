@@ -1,8 +1,8 @@
-package com.deutscheleasing.swfactory.tsun;
+package de.griesche.tsun;
 
-import com.deutscheleasing.swfactory.tsun.mqtt.HomeAssistantDiscovery;
-import com.deutscheleasing.swfactory.tsun.mqtt.MqttPublisher;
-import com.deutscheleasing.swfactory.tsun.talent.TalentClient;
+import de.griesche.tsun.mqtt.HomeAssistantDiscovery;
+import de.griesche.tsun.mqtt.MqttPublisher;
+import de.griesche.tsun.talent.TalentClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.LoggerFactory;
 

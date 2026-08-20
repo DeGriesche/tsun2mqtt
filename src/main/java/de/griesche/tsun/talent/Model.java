@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun.talent;
+package de.griesche.tsun.talent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -52,18 +52,33 @@ public final class Model {
         }
     }
 
+    public enum BatteryStatus {
+        CHARGE, DISCHARGE
+    }
     /** Aggregated production figures of a station. */
     public record StationDetails(
-            OptionalDouble soc,
-            OptionalDouble currentGenerationPower,
-            OptionalDouble totalGenerationPower,
+            OptionalDouble batterySoc,
+            OptionalDouble generationPower,
+            OptionalDouble usePower,
+            OptionalDouble generationValue,
+            OptionalDouble batteryPower,
+            OptionalDouble chargeValueDay,
+            OptionalDouble dischargeValueDay,
+            Optional<BatteryStatus> batteryStatus,
+            OptionalDouble batteryRemainingCapacity,
             JsonNode raw) {
 
         static StationDetails of(JsonNode data) {
             return new StationDetails(
                     Json.number(data, "batterySoc"),
                     Json.number(data, "generationPower"),
-                    Json.number(data, "generationValue"),
+                    Json.number(data, "usePower"),
+                    Json.number(data, "generationUploadTotal"),
+                    Json.number(data, "batteryPower"),
+                    Json.number(data, "chargeValue"),
+                    Json.number(data, "dischargeValue"),
+                    Json.text(data, "batteryStatus").map(BatteryStatus::valueOf),
+                    Json.number(data, "remainingCapacity"),
                     data);
         }
     }

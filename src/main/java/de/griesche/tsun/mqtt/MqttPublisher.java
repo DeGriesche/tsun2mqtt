@@ -1,6 +1,6 @@
-package com.deutscheleasing.swfactory.tsun.mqtt;
+package de.griesche.tsun.mqtt;
 
-import com.deutscheleasing.swfactory.tsun.Config;
+import de.griesche.tsun.Config;
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttCallback;
 import org.eclipse.paho.mqttv5.client.MqttClient;
@@ -171,6 +171,7 @@ public class MqttPublisher implements AutoCloseable {
 
     @Override
     public void close() {
+        LOG.info("Closing MQTT Publisher.");
         callbackWorker.shutdownNow();
         try {
             if (client.isConnected()) {

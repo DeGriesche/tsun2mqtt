@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun;
+package de.griesche.tsun;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,13 +45,13 @@ class ConfigTest {
     @Test
     void normalisesUrlsAndTopics() {
         var env = credentials();
-        env.put("TALENT_BASE_URL", "https://www.talent-monitoring.com/prod-api/");
+        env.put("TALENT_BASE_URL", "https://www.talent-monitoring.com");
         env.put("MQTT_BASE_TOPIC", "/solar/tsun/");
         env.put("HA_DISCOVERY_PREFIX", "ha/");
 
         var config = Config.fromEnv(env);
 
-        assertEquals("https://www.talent-monitoring.com/prod-api", config.talentBaseUrl());
+        assertEquals("https://www.talent-monitoring.com", config.talentBaseUrl());
         assertEquals("solar/tsun", config.mqttBaseTopic());
         assertEquals("ha", config.haDiscoveryPrefix());
     }

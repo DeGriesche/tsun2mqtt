@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun;
+package de.griesche.tsun;
 
 import java.time.Duration;
 import java.util.Map;
@@ -44,9 +44,9 @@ public record Config(
                 username,
                 password,
                 get(env, "TALENT_TIMEZONE", "+02:00"),
-                Duration.ofSeconds(positiveLong(env, "POLL_INTERVAL_SECONDS", 300)),
+                Duration.ofSeconds(positiveLong(env, "POLL_INTERVAL_SECONDS", 20)),
                 Duration.ofSeconds(positiveLong(env, "HTTP_TIMEOUT_SECONDS", 30)),
-                get(env, "MQTT_URL", "tcp://localhost:1883"),
+                get(env, "MQTT_URL", "tcp://omv2:1883"),
                 optional(env, "MQTT_USERNAME"),
                 optional(env, "MQTT_PASSWORD"),
                 get(env, "MQTT_CLIENT_ID", "tsun2mqtt"),

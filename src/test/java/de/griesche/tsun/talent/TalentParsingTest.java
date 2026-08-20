@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun.talent;
+package de.griesche.tsun.talent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.deutscheleasing.swfactory.tsun.mqtt;
+package de.griesche.tsun.mqtt;
 
 import java.util.Locale;
 
