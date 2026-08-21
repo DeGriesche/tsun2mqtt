@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Drives a single poll cycle against a stubbed API and inspects what lands on MQTT. */
-class BridgeTest {
+class BridgeST {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
