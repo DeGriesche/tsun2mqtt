@@ -5,7 +5,9 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
+env:
+  IMAGE_NAME: ghcr.io/degriesche/tsun2mqtt:$(date +%s)
+  
 jobs:
 
   build:
@@ -15,4 +17,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag  ghcr.io/degriesche/tsun2mqtt:$(date +%s)
+      run: docker build . --file Dockerfile --tag  $IMAGE_NAME
+    - name: Puck Docker image 
+      run: docker image push $IMAGE_NAME
