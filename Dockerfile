@@ -9,7 +9,8 @@ COPY pom.xml ./
 RUN mvn -B -ntp dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -ntp clean package -DskipTests
+#RUN mvn -B -ntp clean package -DskipTests
+RUN mvn -B -ntp clean package
 
 # ---------- runtime ----------
 FROM eclipse-temurin:25-jre-alpine
