@@ -53,7 +53,7 @@ public final class Model {
     }
 
     public enum BatteryStatus {
-        CHARGE, DISCHARGE
+        CHARGE, DISCHARGE, STATIC
     }
     /** Aggregated production figures of a station. */
     public record StationDetails(
