@@ -45,21 +45,6 @@ with a last-will so consumers notice a dead bridge.
 | `tsun/collector/<serial>/state` | WiFi stick / data logger diagnostics |
 | `tsun/<kind>/<id>/raw` | untouched API payload, only when `PUBLISH_RAW=true` |
 
-```json
-// tsun/inverter/y1234567/state
-{
-  "device_id": "Y1234567",
-  "serial_number": "Y1234567",
-  "station_name": "Balcony",
-  "temperature": 41.3,
-  "pv1_voltage": 34.1, "pv1_current": 2.2, "pv1_power": 75.0,
-  "pv2_voltage": 33.8, "pv2_current": 2.1, "pv2_power": 71.0,
-  "pv_total_power": 146.0,
-  "grid1_voltage": 229.7, "grid1_current": 0.63, "grid1_frequency": 50.01,
-  "last_update": "2026-08-18T10:15:03.412Z"
-}
-```
-
 Station payloads carry `station_name`, `status`, `total_active_power`, `day_energy`,
 `month_energy`, `year_energy` and `total_energy`. The number of PV strings and AC phases follows
 whatever the API reports, so a three-string or three-phase inverter gets `pv3_*` / `grid3_*` keys
@@ -91,7 +76,7 @@ All configuration is environment variables (see `.env.example`).
 | --- | --- | --- |
 | `TALENT_USERNAME` | – | **required**, portal login |
 | `TALENT_PASSWORD` | – | **required**, portal password |
-| `TALENT_BASE_URL` | `https://pro.talent-monitoring.com/prod-api` | use `https://www.talent-monitoring.com/prod-api` for the non-pro portal |
+| `TALENT_BASE_URL` | `https://pro.talent-monitoring.com` | use `https://www.talent-monitoring.com` for the non-pro portal |
 | `TALENT_TIMEZONE` | `+02:00` | UTC offset sent to the station endpoint |
 | `POLL_INTERVAL_SECONDS` | `300` | poll cycle length |
 | `HTTP_TIMEOUT_SECONDS` | `30` | per-request timeout |
@@ -138,45 +123,4 @@ mvn test                           # unit tests only, no network needed
 docker build -t tsun2mqtt .        # compiles and runs the tests inside the build stage
 ```
 
-Layout:
 
-```
-src/main/java/.../tsun/
-  Main.java                  entry point, logging setup, shutdown handling
-  Config.java                environment variable parsing and validation
-  Bridge.java                poll loop: stations -> collectors -> inverters -> MQTT
-  talent/TalentClient.java   REST client, bearer token handling, re-login on 401
-  talent/Model.java          value types extracted from the API responses
-  talent/Json.java           lenient JSON accessors (field aliases, string numbers)
-  mqtt/MqttPublisher.java    MQTT v5 publisher, availability topic, auto reconnect
-  mqtt/HomeAssistantDiscovery.java  discovery config payloads
-  mqtt/Topics.java           topic naming and slugging
-```
-
-### About the API
-
-The TALENT API is undocumented; the endpoints used here were derived from the community
-integrations below and from the portal itself. Field names differ between portal versions, so
-`Json` accepts several candidate names per field and tolerates missing ones — if your portal returns
-something different, run with `PUBLISH_RAW=true LOG_LEVEL=debug` and add the alias in `Model`.
-
-Endpoints in use, relative to `TALENT_BASE_URL`:
-
-| Call | Purpose |
-| --- | --- |
-| `POST /login` | username/password to bearer token |
-| `GET /system/station/list` | stations of the account |
-| `GET /system/station/getPowerStationByGuid` | station power and energy counters |
-| `GET /tools/device/selectDeviceCollector` | collectors, signal strength |
-| `GET /tools/device/selectDeviceInverter` | inverters of a station |
-| `GET /tools/device/selectDeviceInverterInfo` | live inverter readings |
-
-Prior art and reference for the API shape:
-
-- [LenzGr/pytalent-monitor](https://github.com/LenzGr/pytalent-monitor)
-- [StephanU/ha-talent-monitor](https://github.com/StephanU/ha-talent-monitor)
-- [asciidisco/tsun-talent-monitoring](https://github.com/asciidisco/tsun-talent-monitoring)
-- [s-allius/tsun-gen3-proxy](https://github.com/s-allius/tsun-gen3-proxy) — local alternative that
-  intercepts the inverter connection instead of using the cloud
-
-Not affiliated with TSUN or TALENT.
