@@ -17,6 +17,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag  $IMAGE_NAME
+      run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
     - name: Puck Docker image 
-      run: docker image push $IMAGE_NAME
+      run: docker image push "$IMAGE_NAME"
